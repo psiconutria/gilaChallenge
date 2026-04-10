@@ -1,0 +1,52 @@
+name: Run Tests on push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start app (dev)
+        run: |
+          docker run -d --name sdet_app_dev -p 3001:3000 ghcr.io/danielsilva-loanpro/sdet-interview-challenge:latest
+
+      - name: Wait for dev service
+        run: |
+          for i in {1..30}; do
+            curl -sSf http://localhost:3001/dev/users && break || sleep 1
+          done
+
+      - name: Run tests (dev)
+        run: |
+          python -m pip install pytest requests
+          export BASE_URL=http://localhost:3001
+          export ENV_PREFIX=/dev
+          pytest tests/test_endpoints.py -q
+
+
+  prod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start app (prod)
+        run: |
+          docker run -d --name sdet_app_prod -p 3002:3000 ghcr.io/danielsilva-loanpro/sdet-interview-challenge:latest
+
+      - name: Wait for prod service
+        run: |
+          for i in {1..30}; do
+            curl -sSf http://localhost:3002/prod/users && break || sleep 1
+          done
+
+      - name: Run tests (prod)
+        run: |
+          python -m pip install pytest requests
+          export BASE_URL=http://localhost:3001
+          export ENV_PREFIX=/dev
+          pytest tests/test_endpoints.py -q
